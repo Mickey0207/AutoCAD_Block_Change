@@ -9,9 +9,17 @@
 	<UseWindowsForms>true</UseWindowsForms>
 	<UseWPF>true</UseWPF>
 	<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+	<!-- 修正：添加字符編碼設定 -->
+	<LangVersion>latest</LangVersion>
+	<OutputType>Library</OutputType>
+	<!-- 字符編碼設定 -->
+	<Utf8Output>true</Utf8Output>
+	<FileEncoding>UTF-8</FileEncoding>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="AutoCAD.NET" Version="25.0.1" />
+    <!-- 添加字符編碼支援 -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="myCommands.Designer.cs">

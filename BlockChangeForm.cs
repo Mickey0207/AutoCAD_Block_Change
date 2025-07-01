@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -51,6 +52,7 @@ namespace AutoCAD_Block_Change
 
         // 修改：新增旋轉和聚合線相關控制項
         private CheckBox chkPreserveRotation;
+        private CheckBox chkHandlePolylineConnection; // 修正：新增此控制項宣告
         
         // 新增：旋轉輸入控制項
         private CheckBox chkApplyAdditionalRotation;
@@ -65,9 +67,408 @@ namespace AutoCAD_Block_Change
         private Label lblPath;
         private Label lblRotationDegrees;
 
+        // 定義現代化配色方案
+        private static readonly Color PrimaryColor = Color.FromArgb(41, 128, 185);      // 主要藍色
+        private static readonly Color SecondaryColor = Color.FromArgb(52, 152, 219);    // 次要藍色  
+        private static readonly Color AccentColor = Color.FromArgb(46, 204, 113);       // 重點綠色
+        private static readonly Color DangerColor = Color.FromArgb(231, 76, 60);        // 危險紅色
+        private static readonly Color WarningColor = Color.FromArgb(243, 156, 18);      // 警告橙色
+        private static readonly Color LightGray = Color.FromArgb(236, 240, 241);        // 淺灰色
+        private static readonly Color DarkGray = Color.FromArgb(52, 73, 94);            // 深灰色
+        private static readonly Color TextColor = Color.FromArgb(44, 62, 80);           // 文字顏色
+        private static readonly Color CardBackground = Color.FromArgb(255, 255, 255);   // 卡片背景
+        private static readonly Color FormBackground = Color.FromArgb(248, 249, 250);   // 表單背景
+
         public BlockChangeForm()
         {
+            // 修正：初始化字符編碼支援
+            InitializeEncodingSupport();
             InitializeComponent();
+            ApplyModernStyling();
+        }
+
+        // 新增：初始化字符編碼支援
+        private void InitializeEncodingSupport()
+        {
+            try
+            {
+                // 註冊編碼提供者以支援中文字符
+                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+                
+                // 設定控制台編碼為UTF-8
+                Console.OutputEncoding = Encoding.UTF8;
+                Console.InputEncoding = Encoding.UTF8;
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"編碼初始化失敗: {ex.Message}");
+            }
+        }
+
+        private void ApplyModernStyling()
+        {
+            // 設定表單背景和字體
+            this.BackColor = FormBackground;
+            
+            // 修正：改善中文字體支援
+            try
+            {
+                // 優先使用 Microsoft YaHei，如果不存在則使用微軟正黑體或系統預設字體
+                System.Drawing.Font baseFont = GetChineseFriendlyFont();
+                this.Font = baseFont;
+            }
+            catch
+            {
+                // 如果字體設定失敗，使用系統預設字體
+                this.Font = SystemFonts.DefaultFont;
+            }
+            
+            // 設定標題文字樣式
+            foreach (CheckBox chk in new[] { chkReplaceBlocks, chkRenameBlocks, chkExportBlocks })
+            {
+                StyleHeaderCheckBox(chk);
+            }
+
+            // 設定GroupBox樣式
+            foreach (GroupBox grp in new[] { grpReplace, grpRename, grpExport })
+            {
+                StyleGroupBox(grp);
+            }
+
+            // 設定DataGridView樣式
+            foreach (DataGridView dgv in new[] { dgvReplaceBlocks, dgvRenameBlocks })
+            {
+                StyleDataGridView(dgv);
+            }
+
+            // 設定CheckedListBox樣式
+            foreach (CheckedListBox clb in new[] { clbReplaceLayersFilter, clbRenameLayersFilter })
+            {
+                StyleCheckedListBox(clb);
+            }
+
+            // 設定按鈕樣式
+            StylePrimaryButton(btnExecute);
+            StyleSecondaryButton(btnCancel);
+            StyleAccentButton(btnImportReplace);
+            StyleAccentButton(btnImportRename);
+            StyleAccentButton(btnExportTemplate);
+            StyleWarningButton(btnBrowsePath);
+            StyleInfoButton(btnRefreshReplaceLayer);
+            StyleInfoButton(btnRefreshRenameLayer);
+
+            // 設定文字框樣式
+            foreach (TextBox txt in new[] { txtExcelFileName, txtExcelPath })
+            {
+                StyleTextBox(txt);
+            }
+
+            // 設定標籤樣式
+            foreach (Label lbl in new[] { lblFileName, lblPath, lblRotationDegrees })
+            {
+                StyleLabel(lbl);
+            }
+
+            // 設定CheckBox樣式
+            foreach (CheckBox chk in new[] { chkFilterReplaceByLayer, chkFilterRenameByLayer, 
+                chkPreserveRotation, chkHandlePolylineConnection, chkApplyAdditionalRotation })
+            {
+                StyleCheckBox(chk);
+            }
+
+            // 設定RadioButton樣式
+            foreach (RadioButton rb in new[] { rbRotateLeft, rbRotateRight })
+            {
+                StyleRadioButton(rb);
+            }
+
+            // 設定NumericUpDown樣式
+            StyleNumericUpDown(nudRotationDegrees);
+        }
+
+        // 新增：獲取中文友好字體
+        private System.Drawing.Font GetChineseFriendlyFont()
+        {
+            // 嘗試不同的中文字體，按優先順序
+            string[] fontNames = { 
+                "Microsoft YaHei UI",  // 微軟雅黑 UI
+                "Microsoft YaHei",     // 微軟雅黑
+                "微軟正黑體",            // Microsoft JhengHei
+                "Microsoft JhengHei UI",
+                "Microsoft JhengHei",
+                "SimSun",              // 宋體
+                "SimHei",              // 黑體
+                "NSimSun"              // 新宋體
+            };
+
+            foreach (string fontName in fontNames)
+            {
+                try
+                {
+                    using (var testFont = new System.Drawing.Font(fontName, 9F))
+                    {
+                        // 如果字體可以創建，返回該字體
+                        return new System.Drawing.Font(fontName, 9F, FontStyle.Regular);
+                    }
+                }
+                catch
+                {
+                    continue; // 嘗試下一個字體
+                }
+            }
+
+            // 如果所有中文字體都失敗，返回系統預設字體
+            return SystemFonts.DefaultFont;
+        }
+
+        private void StyleHeaderCheckBox(CheckBox chk)
+        {
+            chk.ForeColor = TextColor;
+            chk.Font = new System.Drawing.Font(chk.Font.FontFamily, 12F, FontStyle.Bold);
+            chk.BackColor = Color.Transparent;
+        }
+
+        private void StyleGroupBox(GroupBox grp)
+        {
+            grp.ForeColor = TextColor;
+            grp.Font = new System.Drawing.Font(grp.Font.FontFamily, 10F, FontStyle.Bold);
+            grp.BackColor = CardBackground;
+            
+            // 創建圓角邊框效果
+            grp.Paint += (sender, e) =>
+            {
+                GroupBox gb = sender as GroupBox;
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // 繪製圓角矩形背景
+                using (GraphicsPath path = CreateRoundedRectangle(0, 0, gb.Width - 1, gb.Height - 1, 8))
+                {
+                    using (Brush brush = new SolidBrush(CardBackground))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                    using (Pen pen = new Pen(LightGray, 2))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
+            };
+        }
+
+        private void StyleDataGridView(DataGridView dgv)
+        {
+            dgv.BackgroundColor = CardBackground;
+            dgv.GridColor = LightGray;
+            dgv.BorderStyle = BorderStyle.None;
+            dgv.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgv.MultiSelect = false;
+            dgv.RowHeadersVisible = false;
+            dgv.AllowUserToResizeRows = false;
+            dgv.Font = new System.Drawing.Font(dgv.Font.FontFamily, 9F);
+            
+            // 標題樣式
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = PrimaryColor;
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgv.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font(dgv.Font.FontFamily, 9F, FontStyle.Bold);
+            dgv.ColumnHeadersDefaultCellStyle.Padding = new Padding(5);
+            dgv.ColumnHeadersHeight = 40;
+            
+            // 資料列樣式
+            dgv.DefaultCellStyle.BackColor = Color.White;
+            dgv.DefaultCellStyle.ForeColor = TextColor;
+            dgv.DefaultCellStyle.SelectionBackColor = SecondaryColor;
+            dgv.DefaultCellStyle.SelectionForeColor = Color.White;
+            dgv.DefaultCellStyle.Padding = new Padding(5);
+            dgv.RowTemplate.Height = 35;
+            
+            // 交替行顏色
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(249, 250, 251);
+        }
+
+        private void StyleCheckedListBox(CheckedListBox clb)
+        {
+            clb.BackColor = CardBackground;
+            clb.ForeColor = TextColor;
+            clb.BorderStyle = BorderStyle.None;
+            clb.Font = new System.Drawing.Font(clb.Font.FontFamily, 9F);
+            clb.ItemHeight = 24;
+        }
+
+        private void StylePrimaryButton(Button btn)
+        {
+            btn.BackColor = PrimaryColor;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new System.Drawing.Font(btn.Font.FontFamily, 10F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            
+            AddButtonHoverEffect(btn, PrimaryColor, SecondaryColor);
+            AddButtonRoundedCorners(btn);
+        }
+
+        private void StyleSecondaryButton(Button btn)
+        {
+            btn.BackColor = DarkGray;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new System.Drawing.Font(btn.Font.FontFamily, 10F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            
+            AddButtonHoverEffect(btn, DarkGray, Color.FromArgb(70, 80, 90));
+            AddButtonRoundedCorners(btn);
+        }
+
+        private void StyleAccentButton(Button btn)
+        {
+            btn.BackColor = AccentColor;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new System.Drawing.Font(btn.Font.FontFamily, 9F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            
+            AddButtonHoverEffect(btn, AccentColor, Color.FromArgb(39, 174, 96));
+            AddButtonRoundedCorners(btn);
+        }
+
+        private void StyleWarningButton(Button btn)
+        {
+            btn.BackColor = WarningColor;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new System.Drawing.Font(btn.Font.FontFamily, 9F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            
+            AddButtonHoverEffect(btn, WarningColor, Color.FromArgb(211, 136, 15));
+            AddButtonRoundedCorners(btn);
+        }
+
+        private void StyleInfoButton(Button btn)
+        {
+            btn.BackColor = SecondaryColor;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new System.Drawing.Font(btn.Font.FontFamily, 9F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            
+            AddButtonHoverEffect(btn, SecondaryColor, PrimaryColor);
+            AddButtonRoundedCorners(btn);
+        }
+
+        private void StyleTextBox(TextBox txt)
+        {
+            txt.BackColor = Color.White;
+            txt.ForeColor = TextColor;
+            txt.BorderStyle = BorderStyle.None;
+            txt.Font = new System.Drawing.Font(txt.Font.FontFamily, 9F);
+            
+            // 創建圓角邊框效果
+            Panel panel = new Panel();
+            panel.BackColor = LightGray;
+            panel.Size = new Size(txt.Width + 4, txt.Height + 4);
+            panel.Location = new Point(txt.Location.X - 2, txt.Location.Y - 2);
+            
+            txt.Parent.Controls.Add(panel);
+            panel.BringToFront();
+            txt.Parent = panel;
+            txt.Location = new Point(2, 2);
+            
+            panel.Paint += (sender, e) =>
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(0, 0, panel.Width - 1, panel.Height - 1, 4))
+                {
+                    using (Brush brush = new SolidBrush(Color.White))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                    using (Pen pen = new Pen(LightGray, 1))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
+            };
+        }
+
+        private void StyleLabel(Label lbl)
+        {
+            lbl.ForeColor = TextColor;
+            lbl.Font = new System.Drawing.Font(lbl.Font.FontFamily, 9F, FontStyle.Regular);
+            lbl.BackColor = Color.Transparent;
+        }
+
+        private void StyleCheckBox(CheckBox chk)
+        {
+            chk.ForeColor = TextColor;
+            chk.Font = new System.Drawing.Font(chk.Font.FontFamily, 9F);
+            chk.BackColor = Color.Transparent;
+        }
+
+        private void StyleRadioButton(RadioButton rb)
+        {
+            rb.ForeColor = TextColor;
+            rb.Font = new System.Drawing.Font(rb.Font.FontFamily, 9F);
+            rb.BackColor = Color.Transparent;
+        }
+
+        private void StyleNumericUpDown(NumericUpDown nud)
+        {
+            nud.BackColor = Color.White;
+            nud.ForeColor = TextColor;
+            nud.BorderStyle = BorderStyle.FixedSingle;
+            nud.Font = new System.Drawing.Font(nud.Font.FontFamily, 9F);
+        }
+
+        private void AddButtonHoverEffect(Button btn, Color normalColor, Color hoverColor)
+        {
+            btn.MouseEnter += (sender, e) =>
+            {
+                btn.BackColor = hoverColor;
+            };
+            
+            btn.MouseLeave += (sender, e) =>
+            {
+                btn.BackColor = normalColor;
+            };
+        }
+
+        private void AddButtonRoundedCorners(Button btn)
+        {
+            btn.Paint += (sender, e) =>
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                using (GraphicsPath path = CreateRoundedRectangle(0, 0, btn.Width - 1, btn.Height - 1, 6))
+                {
+                    using (Brush brush = new SolidBrush(btn.BackColor))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                }
+                
+                // 繪製按鈕文字
+                TextRenderer.DrawText(g, btn.Text, btn.Font, btn.ClientRectangle, btn.ForeColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+        }
+
+        private GraphicsPath CreateRoundedRectangle(int x, int y, int width, int height, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
         }
 
         private void InitializeComponent()
@@ -84,6 +485,7 @@ namespace AutoCAD_Block_Change
             btnRefreshReplaceLayer = new Button();
             clbReplaceLayersFilter = new CheckedListBox();
             chkPreserveRotation = new CheckBox();
+            chkHandlePolylineConnection = new CheckBox(); // 修正：確保此控制項正確初始化
             chkApplyAdditionalRotation = new CheckBox();
             rbRotateLeft = new RadioButton();
             rbRotateRight = new RadioButton();
@@ -113,250 +515,241 @@ namespace AutoCAD_Block_Change
             ((ISupportInitialize)dgvRenameBlocks).BeginInit();
             grpExport.SuspendLayout();
             SuspendLayout();
-            // 
-            // chkReplaceBlocks
-            // 
-            chkReplaceBlocks.Location = new Point(22, 31);
+            
+            // Form 基本設定
+            this.ClientSize = new Size(2200, 1768);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "BlockChangeForm";
+            this.Padding = new Padding(20);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Text = "圖塊管理工具";
+            this.BackColor = FormBackground;
+            
+            // 主要功能選擇區域 - 頂部
+            chkReplaceBlocks.Location = new Point(30, 30);
             chkReplaceBlocks.Name = "chkReplaceBlocks";
-            chkReplaceBlocks.Size = new Size(248, 39);
+            chkReplaceBlocks.Size = new Size(240, 44);
             chkReplaceBlocks.TabIndex = 0;
             chkReplaceBlocks.Text = "批量置換圖塊";
+            chkReplaceBlocks.UseVisualStyleBackColor = true;
             chkReplaceBlocks.CheckedChanged += ChkReplaceBlocks_CheckedChanged;
-            // 
-            // chkRenameBlocks
-            // 
-            chkRenameBlocks.Location = new Point(289, 25);
+
+            chkRenameBlocks.Location = new Point(287, 30);
             chkRenameBlocks.Name = "chkRenameBlocks";
-            chkRenameBlocks.Size = new Size(293, 50);
+            chkRenameBlocks.Size = new Size(275, 44);
             chkRenameBlocks.TabIndex = 1;
             chkRenameBlocks.Text = "批量重命名圖塊";
+            chkRenameBlocks.UseVisualStyleBackColor = true;
             chkRenameBlocks.CheckedChanged += ChkRenameBlocks_CheckedChanged;
-            // 
-            // chkExportBlocks
-            // 
-            chkExportBlocks.Location = new Point(607, 27);
+
+            chkExportBlocks.Location = new Point(568, 28);
             chkExportBlocks.Name = "chkExportBlocks";
-            chkExportBlocks.Size = new Size(323, 46);
+            chkExportBlocks.Size = new Size(238, 49);
             chkExportBlocks.TabIndex = 2;
-            chkExportBlocks.Text = "輸出圖塊清單到CSV";
+            chkExportBlocks.Text = "輸出圖塊清單";
+            chkExportBlocks.UseVisualStyleBackColor = true;
             chkExportBlocks.CheckedChanged += ChkExportBlocks_CheckedChanged;
-            // 
-            // grpReplace
-            // 
+
+            // 置換圖塊區域
             grpReplace.Controls.Add(dgvReplaceBlocks);
             grpReplace.Controls.Add(btnImportReplace);
             grpReplace.Controls.Add(chkFilterReplaceByLayer);
             grpReplace.Controls.Add(btnRefreshReplaceLayer);
             grpReplace.Controls.Add(clbReplaceLayersFilter);
             grpReplace.Controls.Add(chkPreserveRotation);
+            grpReplace.Controls.Add(chkHandlePolylineConnection); // 修正：確保加入控制項
             grpReplace.Controls.Add(chkApplyAdditionalRotation);
             grpReplace.Controls.Add(rbRotateLeft);
             grpReplace.Controls.Add(rbRotateRight);
             grpReplace.Controls.Add(lblRotationDegrees);
             grpReplace.Controls.Add(nudRotationDegrees);
             grpReplace.Enabled = false;
-            grpReplace.Location = new Point(10, 86);
+            grpReplace.Location = new Point(30, 83);
             grpReplace.Name = "grpReplace";
-            grpReplace.Size = new Size(2138, 544);
+            grpReplace.Size = new Size(2140, 622);
             grpReplace.TabIndex = 3;
             grpReplace.TabStop = false;
             grpReplace.Text = "置換圖塊設定";
-            // 
-            // dgvReplaceBlocks
-            // 
+
+            // DataGridView - 置換清單
             dgvReplaceBlocks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dgvReplaceBlocks.Columns.AddRange(new DataGridViewColumn[] { oldBlockCol, newBlockCol });
-            dgvReplaceBlocks.Location = new Point(6, 45);
+            dgvReplaceBlocks.Location = new Point(20, 40);
             dgvReplaceBlocks.Name = "dgvReplaceBlocks";
             dgvReplaceBlocks.RowHeadersWidth = 102;
-            dgvReplaceBlocks.Size = new Size(660, 499);
+            dgvReplaceBlocks.Size = new Size(823, 565);
             dgvReplaceBlocks.TabIndex = 0;
-            // 
-            // oldBlockCol
-            // 
+            dgvReplaceBlocks.AllowUserToAddRows = true;
+            dgvReplaceBlocks.AllowUserToDeleteRows = true;
+
             oldBlockCol.HeaderText = "舊圖塊名稱";
-            oldBlockCol.MinimumWidth = 12;
             oldBlockCol.Name = "oldBlockCol";
-            oldBlockCol.Width = 270;
-            // 
-            // newBlockCol
-            // 
+            oldBlockCol.Width = 340;
+
             newBlockCol.HeaderText = "新圖塊名稱";
-            newBlockCol.MinimumWidth = 12;
             newBlockCol.Name = "newBlockCol";
-            newBlockCol.Width = 270;
-            // 
-            // btnImportReplace
-            // 
-            btnImportReplace.Location = new Point(672, 473);
+            newBlockCol.Width = 340;
+
+            // 按鈕區域 - 置換
+            btnImportReplace.Location = new Point(1048, 491);
             btnImportReplace.Name = "btnImportReplace";
-            btnImportReplace.Size = new Size(235, 65);
+            btnImportReplace.Size = new Size(220, 125);
             btnImportReplace.TabIndex = 1;
             btnImportReplace.Text = "匯入CSV";
+            btnImportReplace.UseVisualStyleBackColor = true;
             btnImportReplace.Click += BtnImportReplace_Click;
-            // 
-            // chkFilterReplaceByLayer
-            // 
-            chkFilterReplaceByLayer.Location = new Point(1561, 20);
+
+            // 圖層篩選區域 - 置換
+            chkFilterReplaceByLayer.Location = new Point(1274, 30);
             chkFilterReplaceByLayer.Name = "chkFilterReplaceByLayer";
-            chkFilterReplaceByLayer.Size = new Size(314, 74);
+            chkFilterReplaceByLayer.Size = new Size(214, 50);
             chkFilterReplaceByLayer.TabIndex = 2;
             chkFilterReplaceByLayer.Text = "按圖層篩選";
+            chkFilterReplaceByLayer.UseVisualStyleBackColor = true;
             chkFilterReplaceByLayer.CheckedChanged += ChkFilterReplaceByLayer_CheckedChanged;
-            // 
-            // btnRefreshReplaceLayer
-            // 
-            btnRefreshReplaceLayer.Location = new Point(1881, 20);
+
+            btnRefreshReplaceLayer.Location = new Point(1490, 30);
             btnRefreshReplaceLayer.Name = "btnRefreshReplaceLayer";
-            btnRefreshReplaceLayer.Size = new Size(257, 74);
+            btnRefreshReplaceLayer.Size = new Size(212, 60);
             btnRefreshReplaceLayer.TabIndex = 3;
-            btnRefreshReplaceLayer.Text = "刷新圖層";
+            btnRefreshReplaceLayer.Text = "刷新";
+            btnRefreshReplaceLayer.UseVisualStyleBackColor = true;
             btnRefreshReplaceLayer.Click += BtnRefreshReplaceLayer_Click;
-            // 
-            // clbReplaceLayersFilter
-            // 
+
             clbReplaceLayersFilter.CheckOnClick = true;
             clbReplaceLayersFilter.Enabled = false;
-            clbReplaceLayersFilter.Location = new Point(1356, 100);
+            clbReplaceLayersFilter.Location = new Point(1274, 96);
             clbReplaceLayersFilter.Name = "clbReplaceLayersFilter";
-            clbReplaceLayersFilter.Size = new Size(780, 434);
+            clbReplaceLayersFilter.Size = new Size(846, 520);
             clbReplaceLayersFilter.TabIndex = 4;
-            // 
-            // chkPreserveRotation
-            // 
+
+            // 旋轉控制區域
             chkPreserveRotation.Checked = true;
             chkPreserveRotation.CheckState = CheckState.Checked;
-            chkPreserveRotation.Location = new Point(685, 45);
+            chkPreserveRotation.Location = new Point(855, 45);
             chkPreserveRotation.Name = "chkPreserveRotation";
-            chkPreserveRotation.Size = new Size(301, 63);
+            chkPreserveRotation.Size = new Size(302, 50);
             chkPreserveRotation.TabIndex = 5;
             chkPreserveRotation.Text = "保持圖塊旋轉角度";
-            // 
-            // chkApplyAdditionalRotation
-            // 
-            chkApplyAdditionalRotation.Location = new Point(685, 114);
+            chkPreserveRotation.UseVisualStyleBackColor = true;
+
+            // 修正：加入聚合線處理選項
+            chkHandlePolylineConnection.Location = new Point(855, 101);
+            chkHandlePolylineConnection.Name = "chkHandlePolylineConnection";
+            chkHandlePolylineConnection.Size = new Size(200, 30);
+            chkHandlePolylineConnection.TabIndex = 6;
+            chkHandlePolylineConnection.Text = "智能聚合線處理";
+            chkHandlePolylineConnection.UseVisualStyleBackColor = true;
+
+            chkApplyAdditionalRotation.Location = new Point(855, 137);
             chkApplyAdditionalRotation.Name = "chkApplyAdditionalRotation";
-            chkApplyAdditionalRotation.Size = new Size(175, 59);
-            chkApplyAdditionalRotation.TabIndex = 6;
+            chkApplyAdditionalRotation.Size = new Size(190, 42);
+            chkApplyAdditionalRotation.TabIndex = 7;
             chkApplyAdditionalRotation.Text = "額外旋轉";
+            chkApplyAdditionalRotation.UseVisualStyleBackColor = true;
             chkApplyAdditionalRotation.CheckedChanged += ChkApplyAdditionalRotation_CheckedChanged;
-            // 
-            // rbRotateLeft
-            // 
+
             rbRotateLeft.Checked = true;
             rbRotateLeft.Enabled = false;
-            rbRotateLeft.Location = new Point(723, 170);
+            rbRotateLeft.Location = new Point(895, 185);
             rbRotateLeft.Name = "rbRotateLeft";
-            rbRotateLeft.Size = new Size(197, 60);
-            rbRotateLeft.TabIndex = 7;
+            rbRotateLeft.Size = new Size(199, 48);
+            rbRotateLeft.TabIndex = 8;
             rbRotateLeft.TabStop = true;
             rbRotateLeft.Text = "向左旋轉";
-            // 
-            // rbRotateRight
-            // 
+            rbRotateLeft.UseVisualStyleBackColor = true;
+
             rbRotateRight.Enabled = false;
-            rbRotateRight.Location = new Point(723, 227);
+            rbRotateRight.Location = new Point(1100, 181);
             rbRotateRight.Name = "rbRotateRight";
-            rbRotateRight.Size = new Size(178, 60);
-            rbRotateRight.TabIndex = 8;
+            rbRotateRight.Size = new Size(190, 52);
+            rbRotateRight.TabIndex = 9;
             rbRotateRight.Text = "向右旋轉";
-            // 
-            // lblRotationDegrees
-            // 
-            lblRotationDegrees.Location = new Point(723, 290);
+            rbRotateRight.UseVisualStyleBackColor = true;
+
+            lblRotationDegrees.Location = new Point(941, 247);
             lblRotationDegrees.Name = "lblRotationDegrees";
-            lblRotationDegrees.Size = new Size(149, 44);
-            lblRotationDegrees.TabIndex = 9;
+            lblRotationDegrees.Size = new Size(145, 43);
+            lblRotationDegrees.TabIndex = 10;
             lblRotationDegrees.Text = "旋轉度數:";
-            // 
-            // nudRotationDegrees
-            // 
+
             nudRotationDegrees.DecimalPlaces = 1;
             nudRotationDegrees.Enabled = false;
-            nudRotationDegrees.Location = new Point(878, 288);
+            nudRotationDegrees.Location = new Point(1092, 247);
             nudRotationDegrees.Maximum = new decimal(new int[] { 360, 0, 0, 0 });
             nudRotationDegrees.Name = "nudRotationDegrees";
-            nudRotationDegrees.Size = new Size(141, 46);
-            nudRotationDegrees.TabIndex = 10;
+            nudRotationDegrees.Size = new Size(172, 46);
+            nudRotationDegrees.TabIndex = 11;
             nudRotationDegrees.Value = new decimal(new int[] { 90, 0, 0, 0 });
-            // 
-            // grpRename
-            // 
+
+            // 重命名圖塊區域
             grpRename.Controls.Add(dgvRenameBlocks);
             grpRename.Controls.Add(btnImportRename);
             grpRename.Controls.Add(chkFilterRenameByLayer);
             grpRename.Controls.Add(btnRefreshRenameLayer);
             grpRename.Controls.Add(clbRenameLayersFilter);
             grpRename.Enabled = false;
-            grpRename.Location = new Point(12, 675);
+            grpRename.Location = new Point(30, 711);
             grpRename.Name = "grpRename";
-            grpRename.Size = new Size(2134, 534);
+            grpRename.Size = new Size(2140, 652);
             grpRename.TabIndex = 4;
             grpRename.TabStop = false;
             grpRename.Text = "重命名圖塊設定";
-            // 
-            // dgvRenameBlocks
-            // 
+
+            // DataGridView - 重命名清單
             dgvRenameBlocks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dgvRenameBlocks.Columns.AddRange(new DataGridViewColumn[] { oldNameCol, newNameCol });
-            dgvRenameBlocks.Location = new Point(0, 45);
+            dgvRenameBlocks.Location = new Point(20, 40);
             dgvRenameBlocks.Name = "dgvRenameBlocks";
             dgvRenameBlocks.RowHeadersWidth = 102;
-            dgvRenameBlocks.Size = new Size(664, 515);
+            dgvRenameBlocks.Size = new Size(1022, 596);
             dgvRenameBlocks.TabIndex = 0;
-            // 
-            // oldNameCol
-            // 
+            dgvRenameBlocks.AllowUserToAddRows = true;
+            dgvRenameBlocks.AllowUserToDeleteRows = true;
+
             oldNameCol.HeaderText = "舊圖塊名稱";
-            oldNameCol.MinimumWidth = 12;
             oldNameCol.Name = "oldNameCol";
-            oldNameCol.Width = 270;
-            // 
-            // newNameCol
-            // 
+            oldNameCol.Width = 340;
+
             newNameCol.HeaderText = "新圖塊名稱";
-            newNameCol.MinimumWidth = 12;
             newNameCol.Name = "newNameCol";
-            newNameCol.Width = 270;
-            // 
-            // btnImportRename
-            // 
-            btnImportRename.Location = new Point(670, 465);
+            newNameCol.Width = 340;
+
+            btnImportRename.Location = new Point(1048, 474);
             btnImportRename.Name = "btnImportRename";
-            btnImportRename.Size = new Size(235, 69);
+            btnImportRename.Size = new Size(220, 162);
             btnImportRename.TabIndex = 1;
             btnImportRename.Text = "匯入CSV";
+            btnImportRename.UseVisualStyleBackColor = true;
             btnImportRename.Click += BtnImportRename_Click;
-            // 
-            // chkFilterRenameByLayer
-            // 
-            chkFilterRenameByLayer.Location = new Point(1559, 21);
+
+            // 圖層篩選區域 - 重命名
+            chkFilterRenameByLayer.Location = new Point(1274, 40);
             chkFilterRenameByLayer.Name = "chkFilterRenameByLayer";
-            chkFilterRenameByLayer.Size = new Size(314, 72);
+            chkFilterRenameByLayer.Size = new Size(210, 58);
             chkFilterRenameByLayer.TabIndex = 2;
             chkFilterRenameByLayer.Text = "按圖層篩選";
+            chkFilterRenameByLayer.UseVisualStyleBackColor = true;
             chkFilterRenameByLayer.CheckedChanged += ChkFilterRenameByLayer_CheckedChanged;
-            // 
-            // btnRefreshRenameLayer
-            // 
-            btnRefreshRenameLayer.Location = new Point(1879, 20);
+
+            btnRefreshRenameLayer.Location = new Point(1490, 40);
             btnRefreshRenameLayer.Name = "btnRefreshRenameLayer";
-            btnRefreshRenameLayer.Size = new Size(240, 72);
+            btnRefreshRenameLayer.Size = new Size(212, 58);
             btnRefreshRenameLayer.TabIndex = 3;
-            btnRefreshRenameLayer.Text = "刷新圖層";
+            btnRefreshRenameLayer.Text = "刷新";
+            btnRefreshRenameLayer.UseVisualStyleBackColor = true;
             btnRefreshRenameLayer.Click += BtnRefreshRenameLayer_Click;
-            // 
-            // clbRenameLayersFilter
-            // 
+
             clbRenameLayersFilter.CheckOnClick = true;
             clbRenameLayersFilter.Enabled = false;
-            clbRenameLayersFilter.Location = new Point(1354, 94);
+            clbRenameLayersFilter.Location = new Point(1274, 116);
             clbRenameLayersFilter.Name = "clbRenameLayersFilter";
-            clbRenameLayersFilter.Size = new Size(774, 434);
+            clbRenameLayersFilter.Size = new Size(846, 520);
             clbRenameLayersFilter.TabIndex = 4;
-            // 
-            // grpExport
-            // 
+
+            // 輸出設定區域
             grpExport.Controls.Add(lblFileName);
             grpExport.Controls.Add(txtExcelFileName);
             grpExport.Controls.Add(lblPath);
@@ -364,98 +757,77 @@ namespace AutoCAD_Block_Change
             grpExport.Controls.Add(btnBrowsePath);
             grpExport.Controls.Add(btnExportTemplate);
             grpExport.Enabled = false;
-            grpExport.Location = new Point(10, 1232);
+            grpExport.Location = new Point(23, 1505);
             grpExport.Name = "grpExport";
-            grpExport.Size = new Size(986, 267);
+            grpExport.Size = new Size(1297, 240);
             grpExport.TabIndex = 5;
             grpExport.TabStop = false;
             grpExport.Text = "輸出CSV設定";
-            // 
-            // lblFileName
-            // 
-            lblFileName.Location = new Point(6, 64);
+
+            lblFileName.Location = new Point(16, 81);
             lblFileName.Name = "lblFileName";
-            lblFileName.Size = new Size(150, 49);
+            lblFileName.Size = new Size(146, 45);
             lblFileName.TabIndex = 0;
             lblFileName.Text = "檔案名稱:";
-            // 
-            // txtExcelFileName
-            // 
-            txtExcelFileName.Location = new Point(166, 75);
+
+            txtExcelFileName.Location = new Point(168, 81);
             txtExcelFileName.Name = "txtExcelFileName";
-            txtExcelFileName.Size = new Size(500, 46);
+            txtExcelFileName.Size = new Size(529, 46);
             txtExcelFileName.TabIndex = 1;
             txtExcelFileName.Text = "圖塊清單";
-            // 
-            // lblPath
-            // 
-            lblPath.Location = new Point(10, 130);
+
+            lblPath.Location = new Point(16, 159);
             lblPath.Name = "lblPath";
-            lblPath.Size = new Size(150, 43);
+            lblPath.Size = new Size(146, 48);
             lblPath.TabIndex = 2;
             lblPath.Text = "存放路徑:";
-            // 
-            // txtExcelPath
-            // 
-            txtExcelPath.Location = new Point(166, 127);
+
+            txtExcelPath.Location = new Point(168, 156);
             txtExcelPath.Name = "txtExcelPath";
-            txtExcelPath.Size = new Size(500, 46);
+            txtExcelPath.Size = new Size(529, 46);
             txtExcelPath.TabIndex = 3;
-            txtExcelPath.Text = "C:\\Users\\notel\\Desktop";
-            // 
-            // btnBrowsePath
-            // 
-            btnBrowsePath.Location = new Point(680, 130);
+            txtExcelPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            btnBrowsePath.Location = new Point(703, 154);
             btnBrowsePath.Name = "btnBrowsePath";
-            btnBrowsePath.Size = new Size(180, 46);
+            btnBrowsePath.Size = new Size(147, 48);
             btnBrowsePath.TabIndex = 4;
-            btnBrowsePath.Text = "瀏覽...";
+            btnBrowsePath.Text = "瀏覽";
+            btnBrowsePath.UseVisualStyleBackColor = true;
             btnBrowsePath.Click += BtnBrowsePath_Click;
-            // 
-            // btnExportTemplate
-            // 
-            btnExportTemplate.Location = new Point(10, 198);
+
+            btnExportTemplate.Location = new Point(1055, 45);
             btnExportTemplate.Name = "btnExportTemplate";
-            btnExportTemplate.Size = new Size(199, 58);
+            btnExportTemplate.Size = new Size(220, 156);
             btnExportTemplate.TabIndex = 5;
             btnExportTemplate.Text = "匯出範本";
+            btnExportTemplate.UseVisualStyleBackColor = true;
             btnExportTemplate.Click += BtnExportTemplate_Click;
-            // 
-            // btnExecute
-            // 
-            btnExecute.Location = new Point(1673, 1423);
+
+            // 主要操作按鈕
+            btnExecute.Location = new Point(1850, 1470);
             btnExecute.Name = "btnExecute";
-            btnExecute.Size = new Size(248, 76);
+            btnExecute.Size = new Size(150, 50);
             btnExecute.TabIndex = 6;
-            btnExecute.Text = "執行";
+            btnExecute.Text = "執行操作";
+            btnExecute.UseVisualStyleBackColor = true;
             btnExecute.Click += BtnExecute_Click;
-            // 
-            // btnCancel
-            // 
+
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(1927, 1423);
+            btnCancel.Location = new Point(2020, 1470);
             btnCancel.Name = "btnCancel";
-            btnCancel.Size = new Size(225, 76);
+            btnCancel.Size = new Size(120, 50);
             btnCancel.TabIndex = 7;
             btnCancel.Text = "取消";
-            // 
-            // BlockChangeForm
-            // 
-            ClientSize = new Size(2164, 1511);
-            Controls.Add(chkReplaceBlocks);
-            Controls.Add(chkRenameBlocks);
-            Controls.Add(chkExportBlocks);
-            Controls.Add(grpReplace);
-            Controls.Add(grpRename);
-            Controls.Add(grpExport);
-            Controls.Add(btnExecute);
-            Controls.Add(btnCancel);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            Name = "BlockChangeForm";
-            StartPosition = FormStartPosition.CenterScreen;
-            Text = "圖塊管理工具 v3.2 - 智能聚合線處理";
+            btnCancel.UseVisualStyleBackColor = true;
+
+            // 加入所有控制項到表單
+            this.Controls.AddRange(new Control[] {
+                chkReplaceBlocks, chkRenameBlocks, chkExportBlocks,
+                grpReplace, grpRename, grpExport,
+                btnExecute, btnCancel
+            });
+
             grpReplace.ResumeLayout(false);
             ((ISupportInitialize)dgvReplaceBlocks).EndInit();
             ((ISupportInitialize)nudRotationDegrees).EndInit();
@@ -645,14 +1017,16 @@ namespace AutoCAD_Block_Change
                     
                     if (dialog.ShowDialog() == DialogResult.OK)
                     {
-                        // 創建範本
+                        // 創建範本 - 修正：使用UTF-8 BOM確保中文正確顯示
                         var templateContent = new StringBuilder();
                         templateContent.AppendLine("舊圖塊名稱,新圖塊名稱");
                         templateContent.AppendLine("DOOR_OLD,DOOR_NEW");
                         templateContent.AppendLine("WINDOW_V1,WINDOW_V2");
                         templateContent.AppendLine("BLOCK1,標準門");
                         
-                        File.WriteAllText(dialog.FileName, templateContent.ToString(), Encoding.UTF8);
+                        // 修正：使用UTF-8 BOM編碼寫入文件
+                        var utf8WithBom = new UTF8Encoding(true);
+                        File.WriteAllText(dialog.FileName, templateContent.ToString(), utf8WithBom);
                         MessageBox.Show("範本匯出成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
@@ -665,6 +1039,7 @@ namespace AutoCAD_Block_Change
 
         private void ImportCsvToGrid(string filePath, DataGridView grid)
         {
+            // 修正：使用UTF-8編碼讀取CSV文件
             var lines = File.ReadAllLines(filePath, Encoding.UTF8);
             
             // 清空現有數據
@@ -744,8 +1119,8 @@ namespace AutoCAD_Block_Change
                 {
                     if (row.IsNewRow) continue;
 
-                    string oldBlockName = row.Cells["OldBlock"].Value?.ToString();
-                    string newBlockName = row.Cells["NewBlock"].Value?.ToString();
+                    string oldBlockName = row.Cells["oldBlockCol"].Value?.ToString();
+                    string newBlockName = row.Cells["newBlockCol"].Value?.ToString();
 
                     if (string.IsNullOrEmpty(oldBlockName) || string.IsNullOrEmpty(newBlockName))
                         continue;
@@ -1224,35 +1599,6 @@ namespace AutoCAD_Block_Change
             public Point3d ExtensionPoint { get; set; }
         }
 
-        // 保留：獲取圖塊的實際邊界框（簡化版本作為備用）
-        private Extents3d GetBlockBoundingBox(BlockReference blockRef)
-        {
-            try
-            {
-                Extents3d bounds = blockRef.GeometricExtents;
-                Vector3d buffer = new Vector3d(0.05, 0.05, 0.05);
-                bounds.AddPoint(bounds.MinPoint - buffer);
-                bounds.AddPoint(bounds.MaxPoint + buffer);
-                return bounds;
-            }
-            catch
-            {
-                Point3d center = blockRef.Position;
-                double defaultSize = 1.0;
-                return new Extents3d(
-                    center - new Vector3d(defaultSize, defaultSize, 0),
-                    center + new Vector3d(defaultSize, defaultSize, 0)
-                );
-            }
-        }
-
-        // 保留：檢查點是否在圖塊邊界內（簡化版本作為備用）
-        private bool IsPointInsideBlock(Point3d point, Extents3d blockBounds)
-        {
-            return point.X >= blockBounds.MinPoint.X && point.X <= blockBounds.MaxPoint.X &&
-                   point.Y >= blockBounds.MinPoint.Y && point.Y <= blockBounds.MaxPoint.Y;
-        }
-
         // 保留並改善：回退到簡單延伸邏輯
         private void FallbackToSimpleExtension(Transaction tr, List<PolylineConnectionInfo> connections, Point3d newBlockPosition)
         {
@@ -1282,26 +1628,6 @@ namespace AutoCAD_Block_Change
                     ed.WriteMessage($"\n[錯誤] 簡單延伸失敗: {ex.Message}");
                 }
             }
-        }
-
-        // 保留：計算正交延伸點（作為備用方法）
-        private Point3d CalculateOrthogonalExtensionPoint(Transaction tr, PolylineConnectionInfo connection, Point3d newBlockPosition)
-        {
-            Entity entity = tr.GetObject(connection.PolylineId, OpenMode.ForRead) as Entity;
-            Point3d extensionPoint = newBlockPosition;
-
-            if (entity is Polyline pline)
-            {
-                Vector3d direction = GetPolylineDirectionAtVertex(pline, connection.VertexIndex);
-                extensionPoint = CalculateOrthogonalProjection(connection.ConnectionPoint, newBlockPosition, direction);
-            }
-            else if (entity is Polyline2d pline2d)
-            {
-                Vector3d direction = GetPolyline2dDirectionAtVertex(tr, pline2d, connection.VertexIndex);
-                extensionPoint = CalculateOrthogonalProjection(connection.ConnectionPoint, newBlockPosition, direction);
-            }
-
-            return extensionPoint;
         }
 
         // 保留：獲取聚合線在指定頂點的方向向量
@@ -1350,25 +1676,6 @@ namespace AutoCAD_Block_Change
             }
 
             return direction;
-        }
-
-        // 保留：計算正交投影點
-        private Point3d CalculateOrthogonalProjection(Point3d linePoint, Point3d targetPoint, Vector3d lineDirection)
-        {
-            Vector3d perpDirection = new Vector3d(-lineDirection.Y, lineDirection.X, 0);
-            Vector3d toTarget = targetPoint - linePoint;
-            
-            double projectionAlongLine = toTarget.DotProduct(lineDirection);
-            double projectionPerpendicular = toTarget.DotProduct(perpDirection);
-            
-            if (Math.Abs(projectionAlongLine) >= Math.Abs(projectionPerpendicular))
-            {
-                return linePoint + lineDirection * projectionAlongLine;
-            }
-            else
-            {
-                return linePoint + perpDirection * projectionPerpendicular;
-            }
         }
 
         // 保留：更新聚合線端點的統一方法
@@ -1421,8 +1728,8 @@ namespace AutoCAD_Block_Change
                 {
                     if (row.IsNewRow) continue;
 
-                    string oldName = row.Cells["OldName"].Value?.ToString();
-                    string newName = row.Cells["NewName"].Value?.ToString();
+                    string oldName = row.Cells["oldNameCol"].Value?.ToString();
+                    string newName = row.Cells["newNameCol"].Value?.ToString();
 
                     if (string.IsNullOrEmpty(oldName) || string.IsNullOrEmpty(newName))
                         continue;
@@ -1522,8 +1829,9 @@ namespace AutoCAD_Block_Change
 
                 tr.Commit();
 
-                // 寫入 CSV 文件
-                File.WriteAllText(filePath, csvContent.ToString(), Encoding.UTF8);
+                // 修正：使用UTF-8 BOM寫入CSV文件確保中文正確顯示
+                var utf8WithBom = new UTF8Encoding(true);
+                File.WriteAllText(filePath, csvContent.ToString(), utf8WithBom);
             }
         }
     }
