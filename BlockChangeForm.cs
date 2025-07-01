@@ -51,13 +51,18 @@ namespace AutoCAD_Block_Change
 
         // 修改：新增旋轉和聚合線相關控制項
         private CheckBox chkPreserveRotation;
-        private CheckBox chkHandlePolylineConnection;
         
         // 新增：旋轉輸入控制項
         private CheckBox chkApplyAdditionalRotation;
         private RadioButton rbRotateLeft;
         private RadioButton rbRotateRight;
         private NumericUpDown nudRotationDegrees;
+        private DataGridViewTextBoxColumn oldBlockCol;
+        private DataGridViewTextBoxColumn newBlockCol;
+        private DataGridViewTextBoxColumn oldNameCol;
+        private DataGridViewTextBoxColumn newNameCol;
+        private Label lblFileName;
+        private Label lblPath;
         private Label lblRotationDegrees;
 
         public BlockChangeForm()
@@ -67,265 +72,398 @@ namespace AutoCAD_Block_Change
 
         private void InitializeComponent()
         {
-            this.SuspendLayout();
-            
-            // Form properties
-            this.Text = "圖塊管理工具 v3.2 - 智能聚合線處理";
-            this.Size = new Size(1000, 850);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-
-            // CheckBoxes
             chkReplaceBlocks = new CheckBox();
-            chkReplaceBlocks.Text = "批量置換圖塊";
-            chkReplaceBlocks.Location = new Point(20, 20);
-            chkReplaceBlocks.Size = new Size(150, 20);
-            chkReplaceBlocks.CheckedChanged += ChkReplaceBlocks_CheckedChanged;
-
             chkRenameBlocks = new CheckBox();
-            chkRenameBlocks.Text = "批量重命名圖塊";
-            chkRenameBlocks.Location = new Point(200, 20);
-            chkRenameBlocks.Size = new Size(150, 20);
-            chkRenameBlocks.CheckedChanged += ChkRenameBlocks_CheckedChanged;
-
             chkExportBlocks = new CheckBox();
-            chkExportBlocks.Text = "輸出圖塊清單到CSV";
-            chkExportBlocks.Location = new Point(380, 20);
-            chkExportBlocks.Size = new Size(150, 20);
-            chkExportBlocks.CheckedChanged += ChkExportBlocks_CheckedChanged;
-
-            // Replace Blocks GroupBox
             grpReplace = new GroupBox();
-            grpReplace.Text = "置換圖塊設定";
-            grpReplace.Location = new Point(20, 50);
-            grpReplace.Size = new Size(940, 300);
-            grpReplace.Enabled = false;
-
-            // 匯入按鈕 - 置換圖塊
-            btnImportReplace = new Button();
-            btnImportReplace.Text = "匯入CSV";
-            btnImportReplace.Location = new Point(10, 270);
-            btnImportReplace.Size = new Size(80, 25);
-            btnImportReplace.Click += BtnImportReplace_Click;
-
             dgvReplaceBlocks = new DataGridView();
-            dgvReplaceBlocks.Location = new Point(10, 20);
-            dgvReplaceBlocks.Size = new Size(550, 140);
-            dgvReplaceBlocks.AllowUserToAddRows = true;
-            dgvReplaceBlocks.AllowUserToDeleteRows = true;
-            dgvReplaceBlocks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            
-            DataGridViewTextBoxColumn oldBlockCol = new DataGridViewTextBoxColumn();
-            oldBlockCol.Name = "OldBlock";
-            oldBlockCol.HeaderText = "舊圖塊名稱";
-            oldBlockCol.Width = 270;
-            
-            DataGridViewTextBoxColumn newBlockCol = new DataGridViewTextBoxColumn();
-            newBlockCol.Name = "NewBlock";
-            newBlockCol.HeaderText = "新圖塊名稱";
-            newBlockCol.Width = 270;
-            
-            dgvReplaceBlocks.Columns.Add(oldBlockCol);
-            dgvReplaceBlocks.Columns.Add(newBlockCol);
-
-            // 圖層篩選控制項 - 置換
+            oldBlockCol = new DataGridViewTextBoxColumn();
+            newBlockCol = new DataGridViewTextBoxColumn();
+            btnImportReplace = new Button();
             chkFilterReplaceByLayer = new CheckBox();
-            chkFilterReplaceByLayer.Text = "按圖層篩選";
-            chkFilterReplaceByLayer.Location = new Point(570, 20);
-            chkFilterReplaceByLayer.Size = new Size(100, 20);
-            chkFilterReplaceByLayer.CheckedChanged += ChkFilterReplaceByLayer_CheckedChanged;
-
             btnRefreshReplaceLayer = new Button();
-            btnRefreshReplaceLayer.Text = "刷新圖層";
-            btnRefreshReplaceLayer.Location = new Point(680, 18);
-            btnRefreshReplaceLayer.Size = new Size(80, 25);
-            btnRefreshReplaceLayer.Click += BtnRefreshReplaceLayer_Click;
-
             clbReplaceLayersFilter = new CheckedListBox();
-            clbReplaceLayersFilter.Location = new Point(570, 45);
-            clbReplaceLayersFilter.Size = new Size(350, 115);
+            chkPreserveRotation = new CheckBox();
+            chkApplyAdditionalRotation = new CheckBox();
+            rbRotateLeft = new RadioButton();
+            rbRotateRight = new RadioButton();
+            lblRotationDegrees = new Label();
+            nudRotationDegrees = new NumericUpDown();
+            grpRename = new GroupBox();
+            dgvRenameBlocks = new DataGridView();
+            oldNameCol = new DataGridViewTextBoxColumn();
+            newNameCol = new DataGridViewTextBoxColumn();
+            btnImportRename = new Button();
+            chkFilterRenameByLayer = new CheckBox();
+            btnRefreshRenameLayer = new Button();
+            clbRenameLayersFilter = new CheckedListBox();
+            grpExport = new GroupBox();
+            lblFileName = new Label();
+            txtExcelFileName = new TextBox();
+            lblPath = new Label();
+            txtExcelPath = new TextBox();
+            btnBrowsePath = new Button();
+            btnExportTemplate = new Button();
+            btnExecute = new Button();
+            btnCancel = new Button();
+            grpReplace.SuspendLayout();
+            ((ISupportInitialize)dgvReplaceBlocks).BeginInit();
+            ((ISupportInitialize)nudRotationDegrees).BeginInit();
+            grpRename.SuspendLayout();
+            ((ISupportInitialize)dgvRenameBlocks).BeginInit();
+            grpExport.SuspendLayout();
+            SuspendLayout();
+            // 
+            // chkReplaceBlocks
+            // 
+            chkReplaceBlocks.Location = new Point(22, 31);
+            chkReplaceBlocks.Name = "chkReplaceBlocks";
+            chkReplaceBlocks.Size = new Size(248, 39);
+            chkReplaceBlocks.TabIndex = 0;
+            chkReplaceBlocks.Text = "批量置換圖塊";
+            chkReplaceBlocks.CheckedChanged += ChkReplaceBlocks_CheckedChanged;
+            // 
+            // chkRenameBlocks
+            // 
+            chkRenameBlocks.Location = new Point(289, 25);
+            chkRenameBlocks.Name = "chkRenameBlocks";
+            chkRenameBlocks.Size = new Size(293, 50);
+            chkRenameBlocks.TabIndex = 1;
+            chkRenameBlocks.Text = "批量重命名圖塊";
+            chkRenameBlocks.CheckedChanged += ChkRenameBlocks_CheckedChanged;
+            // 
+            // chkExportBlocks
+            // 
+            chkExportBlocks.Location = new Point(607, 27);
+            chkExportBlocks.Name = "chkExportBlocks";
+            chkExportBlocks.Size = new Size(323, 46);
+            chkExportBlocks.TabIndex = 2;
+            chkExportBlocks.Text = "輸出圖塊清單到CSV";
+            chkExportBlocks.CheckedChanged += ChkExportBlocks_CheckedChanged;
+            // 
+            // grpReplace
+            // 
+            grpReplace.Controls.Add(dgvReplaceBlocks);
+            grpReplace.Controls.Add(btnImportReplace);
+            grpReplace.Controls.Add(chkFilterReplaceByLayer);
+            grpReplace.Controls.Add(btnRefreshReplaceLayer);
+            grpReplace.Controls.Add(clbReplaceLayersFilter);
+            grpReplace.Controls.Add(chkPreserveRotation);
+            grpReplace.Controls.Add(chkApplyAdditionalRotation);
+            grpReplace.Controls.Add(rbRotateLeft);
+            grpReplace.Controls.Add(rbRotateRight);
+            grpReplace.Controls.Add(lblRotationDegrees);
+            grpReplace.Controls.Add(nudRotationDegrees);
+            grpReplace.Enabled = false;
+            grpReplace.Location = new Point(10, 86);
+            grpReplace.Name = "grpReplace";
+            grpReplace.Size = new Size(2138, 544);
+            grpReplace.TabIndex = 3;
+            grpReplace.TabStop = false;
+            grpReplace.Text = "置換圖塊設定";
+            // 
+            // dgvReplaceBlocks
+            // 
+            dgvReplaceBlocks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvReplaceBlocks.Columns.AddRange(new DataGridViewColumn[] { oldBlockCol, newBlockCol });
+            dgvReplaceBlocks.Location = new Point(6, 45);
+            dgvReplaceBlocks.Name = "dgvReplaceBlocks";
+            dgvReplaceBlocks.RowHeadersWidth = 102;
+            dgvReplaceBlocks.Size = new Size(660, 499);
+            dgvReplaceBlocks.TabIndex = 0;
+            // 
+            // oldBlockCol
+            // 
+            oldBlockCol.HeaderText = "舊圖塊名稱";
+            oldBlockCol.MinimumWidth = 12;
+            oldBlockCol.Name = "oldBlockCol";
+            oldBlockCol.Width = 270;
+            // 
+            // newBlockCol
+            // 
+            newBlockCol.HeaderText = "新圖塊名稱";
+            newBlockCol.MinimumWidth = 12;
+            newBlockCol.Name = "newBlockCol";
+            newBlockCol.Width = 270;
+            // 
+            // btnImportReplace
+            // 
+            btnImportReplace.Location = new Point(672, 473);
+            btnImportReplace.Name = "btnImportReplace";
+            btnImportReplace.Size = new Size(235, 65);
+            btnImportReplace.TabIndex = 1;
+            btnImportReplace.Text = "匯入CSV";
+            btnImportReplace.Click += BtnImportReplace_Click;
+            // 
+            // chkFilterReplaceByLayer
+            // 
+            chkFilterReplaceByLayer.Location = new Point(1561, 20);
+            chkFilterReplaceByLayer.Name = "chkFilterReplaceByLayer";
+            chkFilterReplaceByLayer.Size = new Size(314, 74);
+            chkFilterReplaceByLayer.TabIndex = 2;
+            chkFilterReplaceByLayer.Text = "按圖層篩選";
+            chkFilterReplaceByLayer.CheckedChanged += ChkFilterReplaceByLayer_CheckedChanged;
+            // 
+            // btnRefreshReplaceLayer
+            // 
+            btnRefreshReplaceLayer.Location = new Point(1881, 20);
+            btnRefreshReplaceLayer.Name = "btnRefreshReplaceLayer";
+            btnRefreshReplaceLayer.Size = new Size(257, 74);
+            btnRefreshReplaceLayer.TabIndex = 3;
+            btnRefreshReplaceLayer.Text = "刷新圖層";
+            btnRefreshReplaceLayer.Click += BtnRefreshReplaceLayer_Click;
+            // 
+            // clbReplaceLayersFilter
+            // 
             clbReplaceLayersFilter.CheckOnClick = true;
             clbReplaceLayersFilter.Enabled = false;
-
-            // 旋轉功能控制項
-            chkPreserveRotation = new CheckBox();
-            chkPreserveRotation.Text = "保持圖塊旋轉角度";
-            chkPreserveRotation.Location = new Point(10, 170);
-            chkPreserveRotation.Size = new Size(150, 20);
+            clbReplaceLayersFilter.Location = new Point(1356, 100);
+            clbReplaceLayersFilter.Name = "clbReplaceLayersFilter";
+            clbReplaceLayersFilter.Size = new Size(780, 434);
+            clbReplaceLayersFilter.TabIndex = 4;
+            // 
+            // chkPreserveRotation
+            // 
             chkPreserveRotation.Checked = true;
-
-            // 新增：額外旋轉功能
-            chkApplyAdditionalRotation = new CheckBox();
+            chkPreserveRotation.CheckState = CheckState.Checked;
+            chkPreserveRotation.Location = new Point(685, 45);
+            chkPreserveRotation.Name = "chkPreserveRotation";
+            chkPreserveRotation.Size = new Size(301, 63);
+            chkPreserveRotation.TabIndex = 5;
+            chkPreserveRotation.Text = "保持圖塊旋轉角度";
+            // 
+            // chkApplyAdditionalRotation
+            // 
+            chkApplyAdditionalRotation.Location = new Point(685, 114);
+            chkApplyAdditionalRotation.Name = "chkApplyAdditionalRotation";
+            chkApplyAdditionalRotation.Size = new Size(175, 59);
+            chkApplyAdditionalRotation.TabIndex = 6;
             chkApplyAdditionalRotation.Text = "額外旋轉";
-            chkApplyAdditionalRotation.Location = new Point(170, 170);
-            chkApplyAdditionalRotation.Size = new Size(100, 20);
             chkApplyAdditionalRotation.CheckedChanged += ChkApplyAdditionalRotation_CheckedChanged;
-
-            rbRotateLeft = new RadioButton();
-            rbRotateLeft.Text = "向左旋轉";
-            rbRotateLeft.Location = new Point(280, 170);
-            rbRotateLeft.Size = new Size(80, 20);
+            // 
+            // rbRotateLeft
+            // 
             rbRotateLeft.Checked = true;
             rbRotateLeft.Enabled = false;
-
-            rbRotateRight = new RadioButton();
-            rbRotateRight.Text = "向右旋轉";
-            rbRotateRight.Location = new Point(370, 170);
-            rbRotateRight.Size = new Size(80, 20);
+            rbRotateLeft.Location = new Point(723, 170);
+            rbRotateLeft.Name = "rbRotateLeft";
+            rbRotateLeft.Size = new Size(197, 60);
+            rbRotateLeft.TabIndex = 7;
+            rbRotateLeft.TabStop = true;
+            rbRotateLeft.Text = "向左旋轉";
+            // 
+            // rbRotateRight
+            // 
             rbRotateRight.Enabled = false;
-
-            lblRotationDegrees = new Label();
+            rbRotateRight.Location = new Point(723, 227);
+            rbRotateRight.Name = "rbRotateRight";
+            rbRotateRight.Size = new Size(178, 60);
+            rbRotateRight.TabIndex = 8;
+            rbRotateRight.Text = "向右旋轉";
+            // 
+            // lblRotationDegrees
+            // 
+            lblRotationDegrees.Location = new Point(723, 290);
+            lblRotationDegrees.Name = "lblRotationDegrees";
+            lblRotationDegrees.Size = new Size(149, 44);
+            lblRotationDegrees.TabIndex = 9;
             lblRotationDegrees.Text = "旋轉度數:";
-            lblRotationDegrees.Location = new Point(460, 172);
-            lblRotationDegrees.Size = new Size(60, 20);
-
-            nudRotationDegrees = new NumericUpDown();
-            nudRotationDegrees.Location = new Point(525, 170);
-            nudRotationDegrees.Size = new Size(60, 20);
-            nudRotationDegrees.Minimum = 0;
-            nudRotationDegrees.Maximum = 360;
-            nudRotationDegrees.Value = 90;
+            // 
+            // nudRotationDegrees
+            // 
             nudRotationDegrees.DecimalPlaces = 1;
-            nudRotationDegrees.Increment = 1;
             nudRotationDegrees.Enabled = false;
-
-            // 聚合線功能控制項（更新描述）
-            chkHandlePolylineConnection = new CheckBox();
-            chkHandlePolylineConnection.Text = "智能聚合線延伸/裁剪";
-            chkHandlePolylineConnection.Location = new Point(10, 195);
-            chkHandlePolylineConnection.Size = new Size(150, 20);
-
-            grpReplace.Controls.AddRange(new Control[] { 
-                dgvReplaceBlocks, btnImportReplace, 
-                chkFilterReplaceByLayer, btnRefreshReplaceLayer, clbReplaceLayersFilter,
-                chkPreserveRotation, chkApplyAdditionalRotation,
-                rbRotateLeft, rbRotateRight, lblRotationDegrees, nudRotationDegrees,
-                chkHandlePolylineConnection
-            });
-
-            // Rename Blocks GroupBox
-            grpRename = new GroupBox();
-            grpRename.Text = "重命名圖塊設定";
-            grpRename.Location = new Point(20, 360);
-            grpRename.Size = new Size(940, 200);
+            nudRotationDegrees.Location = new Point(878, 288);
+            nudRotationDegrees.Maximum = new decimal(new int[] { 360, 0, 0, 0 });
+            nudRotationDegrees.Name = "nudRotationDegrees";
+            nudRotationDegrees.Size = new Size(141, 46);
+            nudRotationDegrees.TabIndex = 10;
+            nudRotationDegrees.Value = new decimal(new int[] { 90, 0, 0, 0 });
+            // 
+            // grpRename
+            // 
+            grpRename.Controls.Add(dgvRenameBlocks);
+            grpRename.Controls.Add(btnImportRename);
+            grpRename.Controls.Add(chkFilterRenameByLayer);
+            grpRename.Controls.Add(btnRefreshRenameLayer);
+            grpRename.Controls.Add(clbRenameLayersFilter);
             grpRename.Enabled = false;
-
-            // 匯入按鈕 - 重命名圖塊
-            btnImportRename = new Button();
-            btnImportRename.Text = "匯入CSV";
-            btnImportRename.Location = new Point(10, 170);
-            btnImportRename.Size = new Size(80, 25);
-            btnImportRename.Click += BtnImportRename_Click;
-
-            dgvRenameBlocks = new DataGridView();
-            dgvRenameBlocks.Location = new Point(10, 20);
-            dgvRenameBlocks.Size = new Size(550, 140);
-            dgvRenameBlocks.AllowUserToAddRows = true;
-            dgvRenameBlocks.AllowUserToDeleteRows = true;
+            grpRename.Location = new Point(12, 675);
+            grpRename.Name = "grpRename";
+            grpRename.Size = new Size(2134, 534);
+            grpRename.TabIndex = 4;
+            grpRename.TabStop = false;
+            grpRename.Text = "重命名圖塊設定";
+            // 
+            // dgvRenameBlocks
+            // 
             dgvRenameBlocks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            
-            DataGridViewTextBoxColumn oldNameCol = new DataGridViewTextBoxColumn();
-            oldNameCol.Name = "OldName";
+            dgvRenameBlocks.Columns.AddRange(new DataGridViewColumn[] { oldNameCol, newNameCol });
+            dgvRenameBlocks.Location = new Point(0, 45);
+            dgvRenameBlocks.Name = "dgvRenameBlocks";
+            dgvRenameBlocks.RowHeadersWidth = 102;
+            dgvRenameBlocks.Size = new Size(664, 515);
+            dgvRenameBlocks.TabIndex = 0;
+            // 
+            // oldNameCol
+            // 
             oldNameCol.HeaderText = "舊圖塊名稱";
+            oldNameCol.MinimumWidth = 12;
+            oldNameCol.Name = "oldNameCol";
             oldNameCol.Width = 270;
-            
-            DataGridViewTextBoxColumn newNameCol = new DataGridViewTextBoxColumn();
-            newNameCol.Name = "NewName";
+            // 
+            // newNameCol
+            // 
             newNameCol.HeaderText = "新圖塊名稱";
+            newNameCol.MinimumWidth = 12;
+            newNameCol.Name = "newNameCol";
             newNameCol.Width = 270;
-            
-            dgvRenameBlocks.Columns.Add(oldNameCol);
-            dgvRenameBlocks.Columns.Add(newNameCol);
-
-            // 圖層篩選控制項 - 重命名
-            chkFilterRenameByLayer = new CheckBox();
+            // 
+            // btnImportRename
+            // 
+            btnImportRename.Location = new Point(670, 465);
+            btnImportRename.Name = "btnImportRename";
+            btnImportRename.Size = new Size(235, 69);
+            btnImportRename.TabIndex = 1;
+            btnImportRename.Text = "匯入CSV";
+            btnImportRename.Click += BtnImportRename_Click;
+            // 
+            // chkFilterRenameByLayer
+            // 
+            chkFilterRenameByLayer.Location = new Point(1559, 21);
+            chkFilterRenameByLayer.Name = "chkFilterRenameByLayer";
+            chkFilterRenameByLayer.Size = new Size(314, 72);
+            chkFilterRenameByLayer.TabIndex = 2;
             chkFilterRenameByLayer.Text = "按圖層篩選";
-            chkFilterRenameByLayer.Location = new Point(570, 20);
-            chkFilterRenameByLayer.Size = new Size(100, 20);
             chkFilterRenameByLayer.CheckedChanged += ChkFilterRenameByLayer_CheckedChanged;
-
-            btnRefreshRenameLayer = new Button();
+            // 
+            // btnRefreshRenameLayer
+            // 
+            btnRefreshRenameLayer.Location = new Point(1879, 20);
+            btnRefreshRenameLayer.Name = "btnRefreshRenameLayer";
+            btnRefreshRenameLayer.Size = new Size(240, 72);
+            btnRefreshRenameLayer.TabIndex = 3;
             btnRefreshRenameLayer.Text = "刷新圖層";
-            btnRefreshRenameLayer.Location = new Point(680, 18);
-            btnRefreshRenameLayer.Size = new Size(80, 25);
             btnRefreshRenameLayer.Click += BtnRefreshRenameLayer_Click;
-
-            clbRenameLayersFilter = new CheckedListBox();
-            clbRenameLayersFilter.Location = new Point(570, 45);
-            clbRenameLayersFilter.Size = new Size(350, 115);
+            // 
+            // clbRenameLayersFilter
+            // 
             clbRenameLayersFilter.CheckOnClick = true;
             clbRenameLayersFilter.Enabled = false;
-
-            grpRename.Controls.AddRange(new Control[] { 
-                dgvRenameBlocks, btnImportRename, 
-                chkFilterRenameByLayer, btnRefreshRenameLayer, clbRenameLayersFilter 
-            });
-
-            // Export GroupBox
-            grpExport = new GroupBox();
-            grpExport.Text = "輸出CSV設定";
-            grpExport.Location = new Point(20, 570);
-            grpExport.Size = new Size(940, 120);
+            clbRenameLayersFilter.Location = new Point(1354, 94);
+            clbRenameLayersFilter.Name = "clbRenameLayersFilter";
+            clbRenameLayersFilter.Size = new Size(774, 434);
+            clbRenameLayersFilter.TabIndex = 4;
+            // 
+            // grpExport
+            // 
+            grpExport.Controls.Add(lblFileName);
+            grpExport.Controls.Add(txtExcelFileName);
+            grpExport.Controls.Add(lblPath);
+            grpExport.Controls.Add(txtExcelPath);
+            grpExport.Controls.Add(btnBrowsePath);
+            grpExport.Controls.Add(btnExportTemplate);
             grpExport.Enabled = false;
-
-            Label lblFileName = new Label();
+            grpExport.Location = new Point(10, 1232);
+            grpExport.Name = "grpExport";
+            grpExport.Size = new Size(986, 267);
+            grpExport.TabIndex = 5;
+            grpExport.TabStop = false;
+            grpExport.Text = "輸出CSV設定";
+            // 
+            // lblFileName
+            // 
+            lblFileName.Location = new Point(6, 64);
+            lblFileName.Name = "lblFileName";
+            lblFileName.Size = new Size(150, 49);
+            lblFileName.TabIndex = 0;
             lblFileName.Text = "檔案名稱:";
-            lblFileName.Location = new Point(10, 25);
-            lblFileName.Size = new Size(80, 20);
-
-            txtExcelFileName = new TextBox();
-            txtExcelFileName.Location = new Point(90, 23);
-            txtExcelFileName.Size = new Size(200, 20);
+            // 
+            // txtExcelFileName
+            // 
+            txtExcelFileName.Location = new Point(166, 75);
+            txtExcelFileName.Name = "txtExcelFileName";
+            txtExcelFileName.Size = new Size(500, 46);
+            txtExcelFileName.TabIndex = 1;
             txtExcelFileName.Text = "圖塊清單";
-
-            Label lblPath = new Label();
+            // 
+            // lblPath
+            // 
+            lblPath.Location = new Point(10, 130);
+            lblPath.Name = "lblPath";
+            lblPath.Size = new Size(150, 43);
+            lblPath.TabIndex = 2;
             lblPath.Text = "存放路徑:";
-            lblPath.Location = new Point(10, 55);
-            lblPath.Size = new Size(80, 20);
-
-            txtExcelPath = new TextBox();
-            txtExcelPath.Location = new Point(90, 53);
-            txtExcelPath.Size = new Size(500, 20);
-            txtExcelPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-            btnBrowsePath = new Button();
+            // 
+            // txtExcelPath
+            // 
+            txtExcelPath.Location = new Point(166, 127);
+            txtExcelPath.Name = "txtExcelPath";
+            txtExcelPath.Size = new Size(500, 46);
+            txtExcelPath.TabIndex = 3;
+            txtExcelPath.Text = "C:\\Users\\notel\\Desktop";
+            // 
+            // btnBrowsePath
+            // 
+            btnBrowsePath.Location = new Point(680, 130);
+            btnBrowsePath.Name = "btnBrowsePath";
+            btnBrowsePath.Size = new Size(180, 46);
+            btnBrowsePath.TabIndex = 4;
             btnBrowsePath.Text = "瀏覽...";
-            btnBrowsePath.Location = new Point(600, 52);
-            btnBrowsePath.Size = new Size(80, 23);
             btnBrowsePath.Click += BtnBrowsePath_Click;
-
-            // 匯出範本按鈕
-            btnExportTemplate = new Button();
+            // 
+            // btnExportTemplate
+            // 
+            btnExportTemplate.Location = new Point(10, 198);
+            btnExportTemplate.Name = "btnExportTemplate";
+            btnExportTemplate.Size = new Size(199, 58);
+            btnExportTemplate.TabIndex = 5;
             btnExportTemplate.Text = "匯出範本";
-            btnExportTemplate.Location = new Point(10, 85);
-            btnExportTemplate.Size = new Size(100, 25);
             btnExportTemplate.Click += BtnExportTemplate_Click;
-
-            grpExport.Controls.AddRange(new Control[] { lblFileName, txtExcelFileName, lblPath, txtExcelPath, btnBrowsePath, btnExportTemplate });
-
-            // Buttons
-            btnExecute = new Button();
+            // 
+            // btnExecute
+            // 
+            btnExecute.Location = new Point(1673, 1423);
+            btnExecute.Name = "btnExecute";
+            btnExecute.Size = new Size(248, 76);
+            btnExecute.TabIndex = 6;
             btnExecute.Text = "執行";
-            btnExecute.Location = new Point(800, 710);
-            btnExecute.Size = new Size(80, 30);
             btnExecute.Click += BtnExecute_Click;
-
-            btnCancel = new Button();
-            btnCancel.Text = "取消";
-            btnCancel.Location = new Point(890, 710);
-            btnCancel.Size = new Size(80, 30);
+            // 
+            // btnCancel
+            // 
             btnCancel.DialogResult = DialogResult.Cancel;
-
-            // Add controls to form
-            this.Controls.AddRange(new Control[] {
-                chkReplaceBlocks, chkRenameBlocks, chkExportBlocks,
-                grpReplace, grpRename, grpExport,
-                btnExecute, btnCancel
-            });
-
-            this.ResumeLayout(false);
+            btnCancel.Location = new Point(1927, 1423);
+            btnCancel.Name = "btnCancel";
+            btnCancel.Size = new Size(225, 76);
+            btnCancel.TabIndex = 7;
+            btnCancel.Text = "取消";
+            // 
+            // BlockChangeForm
+            // 
+            ClientSize = new Size(2164, 1511);
+            Controls.Add(chkReplaceBlocks);
+            Controls.Add(chkRenameBlocks);
+            Controls.Add(chkExportBlocks);
+            Controls.Add(grpReplace);
+            Controls.Add(grpRename);
+            Controls.Add(grpExport);
+            Controls.Add(btnExecute);
+            Controls.Add(btnCancel);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            Name = "BlockChangeForm";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "圖塊管理工具 v3.2 - 智能聚合線處理";
+            grpReplace.ResumeLayout(false);
+            ((ISupportInitialize)dgvReplaceBlocks).EndInit();
+            ((ISupportInitialize)nudRotationDegrees).EndInit();
+            grpRename.ResumeLayout(false);
+            ((ISupportInitialize)dgvRenameBlocks).EndInit();
+            grpExport.ResumeLayout(false);
+            grpExport.PerformLayout();
+            ResumeLayout(false);
         }
 
         private void ChkApplyAdditionalRotation_CheckedChanged(object sender, EventArgs e)
